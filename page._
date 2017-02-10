@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Page Export</title>
+        <style type='text/css'>
+            body {
+                font:14px/20px "Helvetica Neue";
+                width:640px;
+                margin:0 auto;
+                color:#222;
+            }
+            h1 {
+                font:24px/30px "Helvetica Neue";
+                margin:10px 0;
+            }
+            h4 {
+                font:18px/20px "Helvetica Neue";
+                margin:10px 0;
+                display:inline;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Page Report</h1>
+        <% pages.forEach(function(page) { %>
+        <div class="page">
+            <div class='page-url'>
+                <p><%= page.url %></p>
+            </div>
+            <div class='page-title'>
+                <h4><%= page.title %></h4>
+            </div>
+            <div class='page-status status-<%= page.code %>'>
+                <p><%= page.code %></p>
+            </div>
+        </div>
+        <% }); %>
+    </body>
+</html>

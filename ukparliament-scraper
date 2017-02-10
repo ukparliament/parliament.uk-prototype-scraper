@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+
+// Load all dependencies
+var cheerio = require('cheerio'),
+    fs = require('fs'),
+    path = require('path'),
+    _ = require('underscore'),
+    request = require('request');
+
+// Set initial variables
+var url_to_scrape = process.argv[2],
+    pages = [],
+    urls_queued = [],
+    finishCount = 0;
+
+// Trow an error if we are not passed a URL
+if (!url_to_scrape) throw "Please specify a URL as the only argument to this utility.";
+
+// Generate a report from out url_to_scrape
+function generateReport(url) {
+    urls_queued.push(url);
+
+    // Kick of the initial request
+    request(url, function (error, response, body) {
+      finishCount++;
+
+      console.log('Processing ('+finishCount+'/'+urls_queued.length+'): '+url);
+
+      if (!error && response.statusCode == 200) {
+        var $ = cheerio.load(body);
+
+        var title = $('title').text();
+
+        addPageToReport(url, title, response.statusCode);
+
+        // Load each linked page
+        $('a').each(function(i, element){
+            var href = $(element).attr('href');
+
+            // If there is a href, that HREF has not previously been queued and it is an 'allowed' url
+            if (href && (urls_queued.indexOf(href) < 0) && allowed_url(href)) {
+                urls_queued.push(href); // Add it to our queue
+                generateReport(href);   // Process it
+            }
+        });
+
+        writeReport();
+      } else {
+          addPageToReport(url, 'ERROR - '+response.statusCode, response.statusCode);
+      }
+    })
+}
+
+// Is this url considered 'allowed'
+function allowed_url(url) {
+    return ( (url.indexOf('/') == 0) || (url.indexOf(url_to_scrape) == 0) )
+}
+
+// Add a page report object
+function addPageToReport(url, title, statusCode) {
+    pages.push({
+        url: url,
+        title: title,
+        code: statusCode
+    })
+}
+
+// Load a given page
+function loadPage(url) {
+    request(url, function (error, response, body) {
+        finishCount++;
+
+        console.log('Processing ('+finishCount+'/'+urls_queued.length+'): '+url);
+
+        if (!error && response.statusCode == 200) {
+            var $ = cheerio.load(body);
+
+            var title = $('title').text();
+
+            addPageToReport(url, title, response.statusCode);
+        }
+
+        writeReport();
+    });
+}
+
+// Given the data we have, write our report and display a message to the users
+function writeReport() {
+    fs.writeFileSync('report.json', JSON.stringify(pages), 'utf8');
+    writeHTML();
+
+    if(finishCount == urls_queued.length) showFinishedMessage();
+}
+
+// Use underscore to generate a HTML report
+function writeHTML() {
+    fs.writeFileSync('report.html', _.template(fs.readFileSync(path.join(__dirname, 'page._'), 'utf8'))({
+        pages: pages
+    }), 'utf8');
+}
+
+// Log out a finish message
+function showFinishedMessage() {
+    var message = '\nFinished! Find in this directory:\n- report.html, a HTML page representing the result\n- report.json: raw JSON data.';
+
+    console.log(message);
+}
+
+generateReport(url_to_scrape);

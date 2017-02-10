@@ -1,0 +1,24 @@
+{
+  "author": {
+    "name": "Matthew Rayner",
+    "url": "https://matt.rayner.io/"
+  },
+  "name": "parliament.uk-prototype-scraper",
+  "description": "A status scraper for the parliament.uk prototype. Designed to find erroring pages and edge cases.",
+  "version": "0.1.0",
+  "repository": {
+    "type": "https",
+    "url": "https://github.com/ukparliament/parliament.uk-prototype-scraper.git"
+  },
+  "engines": {
+    "node": ">= v0.4.0"
+  },
+  "dependencies": {
+    "cheerio": "0.4.2",
+    "request": "^2.72.0",
+    "underscore": "1.3.0"
+  },
+  "bin": {
+    "ukparliament-scraper": "ukparliament-scraper"
+  }
+}
