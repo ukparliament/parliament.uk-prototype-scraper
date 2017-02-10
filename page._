@@ -22,18 +22,69 @@
     </head>
     <body>
         <h1>Page Report</h1>
-        <% pages.forEach(function(page) { %>
-        <div class="page">
-            <div class='page-url'>
-                <p><%= page.url %></p>
-            </div>
-            <div class='page-title'>
-                <h4><%= page.title %></h4>
-            </div>
-            <div class='page-status status-<%= page.code %>'>
-                <p><%= page.code %></p>
-            </div>
-        </div>
-        <% }); %>
+        <table class="statuses">
+            <tr>
+                <td>
+                    500
+                </td>
+                <td>
+                    400
+                </td>
+                <td>
+                    300
+                </td>
+                <td>
+                    200
+                </td>
+                <td>
+                    Error
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <%= statusCodes.status500 %>
+                </td>
+                <td>
+                    <%= statusCodes.status400 %>
+                </td>
+                <td>
+                    <%= statusCodes.status300 %>
+                </td>
+                <td>
+                    <%= statusCodes.status200 %>
+                </td>
+                <td>
+                    <%= statusCodes.statusError %>
+                </td>
+            </tr>
+        </table>
+        <hr>
+        <table>
+            <tr>
+                <td>
+                    Code
+                </td>
+                <td>
+                    URL
+                </td>
+                <td>
+                    Title
+                </td>
+            </tr>
+            <% pages.forEach(function(page) { %>
+            <tr class="page">
+                <td class='page-url'>
+                    <%= page.url %>
+                </td>
+                <td class='page-title'>
+                    <%= page.title %>
+                </td>
+                <td class='page-status status-<%= page.code %>'>
+                    <%= page.code %>
+                </td>
+            </tr>
+            <% }); %>
+        </table>
+
     </body>
 </html>

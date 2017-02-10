@@ -11,17 +11,23 @@ var cheerio = require('cheerio'),
 var url_to_scrape = process.argv[2],
     pages = [],
     urls_queued = [],
-    finishCount = 0;
+    finishCount = 0,
+    iterationCount = 0,
+    statusCodes = {
+        status200: 0,
+        status300: 0,
+        status400: 0,
+        status500: 0,
+        statusError: 0
+    };
 
 // Trow an error if we are not passed a URL
 if (!url_to_scrape) throw "Please specify a URL as the only argument to this utility.";
 
 // Generate a report from out url_to_scrape
-function generateReport(url) {
-    urls_queued.push(url);
-
+function generateReport(url, callback) {
     // Kick of the initial request
-    request(url, function (error, response, body) {
+    request({ url: url, timeout: 20000 }, function (error, response, body) {
       finishCount++;
 
       console.log('Processing ('+finishCount+'/'+urls_queued.length+'): '+url);
@@ -31,6 +37,8 @@ function generateReport(url) {
 
         var title = $('title').text();
 
+        statusCodes.status200 = statusCodes.status200 + 1;
+
         addPageToReport(url, title, response.statusCode);
 
         // Load each linked page
@@ -38,16 +46,32 @@ function generateReport(url) {
             var href = $(element).attr('href');
 
             // If there is a href, that HREF has not previously been queued and it is an 'allowed' url
-            if (href && (urls_queued.indexOf(href) < 0) && allowed_url(href)) {
-                urls_queued.push(href); // Add it to our queue
-                generateReport(href);   // Process it
+            if (href) {
+                if(href.indexOf('/') == 0) href = url_to_scrape + href;
+
+                if ( (urls_queued.indexOf(href) < 0) && allowed_url(href) ) {
+                    urls_queued.push(href); // Add it to our queue
+                    //generateReport(href);   // Process it
+                }
             }
         });
-
-        writeReport();
       } else {
-          addPageToReport(url, 'ERROR - '+response.statusCode, response.statusCode);
+          if (response) {
+              if (response.statusCode < 300) statusCodes.status200 = statusCodes.status200 + 1;
+              if (response.statusCode >= 300 && response.statusCode < 400) statusCodes.status300 = statusCodes.status300 + 1;
+              if (response.statusCode >= 400 && response.statusCode < 500) statusCodes.status400 = statusCodes.status400 + 1;
+              if (response.statusCode >= 500) statusCodes.status500 = statusCodes.status500 + 1;
+              addPageToReport(url, 'ERROR - ' + response.statusCode, response.statusCode);
+          }
+          else {
+              statusCodes.statusError = statusCodes.statusError + 1;
+
+              addPageToReport(url, 'ERROR - ' + error, 'error');
+          }
       }
+
+      writeReport();
+      callback();
     })
 }
 
@@ -86,16 +110,17 @@ function loadPage(url) {
 
 // Given the data we have, write our report and display a message to the users
 function writeReport() {
+    sortPages();
+
     fs.writeFileSync('report.json', JSON.stringify(pages), 'utf8');
     writeHTML();
-
-    if(finishCount == urls_queued.length) showFinishedMessage();
 }
 
 // Use underscore to generate a HTML report
 function writeHTML() {
     fs.writeFileSync('report.html', _.template(fs.readFileSync(path.join(__dirname, 'page._'), 'utf8'))({
-        pages: pages
+        pages: pages,
+        statusCodes: statusCodes
     }), 'utf8');
 }
 
@@ -106,4 +131,32 @@ function showFinishedMessage() {
     console.log(message);
 }
 
-generateReport(url_to_scrape);
+// Get the next page in our queued list
+function getPage() {
+    var url = urls_queued[iterationCount];
+    iterationCount++;
+
+    if (url) {
+        generateReport(url, function() {
+           getPage();
+        });
+    } else {
+        showFinishedMessage();
+    }
+}
+
+// Sort pages by status code
+function sortPages() {
+    pages.sort(function(a, b) {
+        if (a.code == 'error') return -1;
+        if (b.code == 'error') return 1;
+
+        return b.code - a.code;
+    });
+}
+
+// generateReport(url_to_scrape);
+
+urls_queued.push(url_to_scrape);
+
+getPage();
